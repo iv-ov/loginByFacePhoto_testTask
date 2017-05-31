@@ -17,27 +17,17 @@ function dl($val){
     ?></pre><?
 }
 
+interface FaceRecognizerInterface {
+    public function verify($photo1, $photo2);
+}
+
 
 /**
  * @author Iv Ov
  */
-class FindFace
+class FindFace implements FaceRecognizerInterface
 {
-//    EXAMPLE:
-//    POST /v0/verify/ HTTP/1.1
-//    Host: api.findface.pro
-//    Authorization: Token yfT8ftheVqnDLS3Q0yCiTH3E8YY_cm4p
-//    Content-Type: application/json
-//    Content-Length: [length]
-//
-//    {
-//      "photo1": "http://static.findface.pro/smaple-photo1.jpg",
-//      "photo2": "http://static.findface.pro/sample-photo2.jpg"
-//    }
-
-
     /**
-     *
      * @var string
      * @todo: generalize
      */
@@ -101,19 +91,55 @@ class FindFace
 
 
 
+class Auth
+{
+    private $faceRecognizer;
+
+
+    public function __construct(FaceRecognizerInterface $faceRecognizer) {
+        $this->faceRecognizer = $faceRecognizer;
+    }
+
+
+    public function loginByPhoto($username, $photo) {
+        $user_photo = $this->getUserPhoto($username);
+        if (!$user_photo){
+            return null;
+        }
+        return $this->faceRecognizer->verify($user_photo, $photo);
+    }
+
+
+    private function getUserPhoto($username) {
+        /** @todo: hardcoded! */
+        $photosByUser = [
+            'user1' => 'http://iv-ov.ru/telemed_help/img/user1_photo_trusted.jpeg',
+        ];
+
+        if (isset($photosByUser[$username])){
+            return $photosByUser[$username];
+        }
+        return null;
+    }
+}
+
+
+
 $photo_to_check = filter_input(INPUT_POST, 'photo');
+$username = filter_input(INPUT_POST, 'username');
 
 if ($photo_to_check){
 
     /**
-     * @todo: eliminate hardcode
+     * @todo: Enter your token from FindFace.Pro here
      */
-    $findFace_token = '*** ENTER YOUR TOKEN FROM FINDFACE.PRO HERE ***';
-    $photo_trusted = 'http://iv-ov.ru/telemed_help/img/user1_photo_trusted.jpeg';
+    $findFace_token = file_get_contents('./findfacepro_token.txt');
 
     $findFace = new FindFace($findFace_token);
 
-    $auth_result = $findFace->verify($photo_trusted, $photo_to_check);
+    $auth = new Auth($findFace);
+
+    $auth_result = $auth->loginByPhoto($username, $photo_to_check);
     dl($auth_result);
 }
 
@@ -123,7 +149,8 @@ if ($photo_to_check){
     <p>
         <label>
             Логин:
-            <input name="username" value="user1" readonly="readonly" style="color: #bbb" />
+            <input name="username" value="user1" />
+            <i>(в системе есть только один логин &mdash; user1)</i>
         </label>
     </p>
     <p>
